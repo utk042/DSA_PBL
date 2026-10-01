@@ -1,0 +1,53 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Length 1300 >>
+stream
+BT /F1 11 Tf 50 790 Td 15 TL
+(SAMPLE PAPER \(synthetic, for testing uploads\)) Tj T*
+(B.Tech Sem III Theory Examination 2023) Tj T*
+(Data Structures and Algorithms II) Tj T*
+(Time: 3 Hours    Total Marks: 70) Tj T*
+(SECTION A) Tj T*
+(1. Attempt all questions in brief.) Tj T*
+(\(a\) Define a threaded binary tree.) Tj T*
+(\(b\) What is the balance factor of a node in an AVL tree?) Tj T*
+(\(c\) Differentiate between BFS and DFS.) Tj T*
+(\(d\) State the principle of optimality in dynamic programming.) Tj T*
+(\(e\) What is a B-tree of order m?) Tj T*
+(SECTION B) Tj T*
+(2. Insert 50, 20, 60, 10, 8, 15, 32, 46, 11, 48 into an AVL tree. Show every rotation. \(10 marks\)) Tj T*
+(3. Find the minimum spanning tree of the given graph using Kruskal's algorithm. Compare it with Prim's algorithm. \(10 marks\)) Tj T*
+(4. Apply Dijkstra's algorithm to find the single source shortest path from vertex A. \(10 marks\)) Tj T*
+(5. Solve the 0/1 knapsack problem for n = 4, W = 8 using dynamic programming. \(10 marks\)) Tj T*
+(6. Find the longest common subsequence of ABCBDAB and BDCABA. \(10 marks\)) Tj T*
+(SECTION C) Tj T*
+(7. Explain heap sort. Build a max heap from 4, 10, 3, 5, 1. \(10 marks\)) Tj T*
+(8. Solve the 4 queens problem using backtracking. Draw the state space tree. \(10 marks\)) Tj T*
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000106 00000 n 
+0000000163 00000 n 
+0000001515 00000 n 
+0000001641 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+1690
+%%EOF

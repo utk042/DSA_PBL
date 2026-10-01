@@ -1,0 +1,55 @@
+// Topic list used to find topics inside question text from uploaded papers.
+// Each entry: [display name, unit, ...phrases]. Phrases are compared after
+// canonical() so case, punctuation and plurals do not matter.
+
+export const VOCABULARY = [
+  ['Binary Tree', 1, 'binary tree', 'complete binary tree', 'full binary tree'],
+  ['Binary Search Tree', 1, 'binary search tree', 'bst'],
+  ['AVL Tree', 1, 'avl tree', 'avl', 'height balanced tree'],
+  ['Threaded Binary Tree', 1, 'threaded binary tree', 'threaded tree'],
+  ['Tree Traversal', 1, 'tree traversal', 'inorder', 'preorder', 'postorder', 'in order traversal', 'pre order traversal', 'post order traversal', 'level order traversal'],
+  ['Heap', 1, 'heap', 'heapify', 'binary heap'],
+  ['Max Heap', 1, 'max heap'],
+  ['Min Heap', 1, 'min heap'],
+  ['Heap Sort', 1, 'heap sort', 'heapsort'],
+  ['Priority Queue', 1, 'priority queue'],
+  ['Huffman Coding', 1, 'huffman', 'huffman coding', 'huffman tree'],
+
+  ['Graph Representation', 2, 'adjacency matrix', 'adjacency list', 'graph representation'],
+  ['BFS', 2, 'bfs', 'breadth first search', 'breadth first traversal'],
+  ['DFS', 2, 'dfs', 'depth first search', 'depth first traversal'],
+  ['Topological Sorting', 2, 'topological sort', 'topological sorting', 'topological order'],
+  ['Connected Components', 2, 'connected component', 'strongly connected component', 'biconnected component'],
+  ['Minimum Spanning Tree', 2, 'minimum spanning tree', 'minimum cost spanning tree', 'spanning tree', 'mst'],
+  ['Kruskal', 2, 'kruskal'],
+  ['Prim', 2, 'prim'],
+  ['Dijkstra', 2, 'dijkstra', 'single source shortest path'],
+  ['Bellman Ford', 2, 'bellman ford', 'negative weight cycle'],
+  ['Floyd Warshall', 2, 'floyd warshall', 'floyd', 'all pair shortest path'],
+  ['Transitive Closure', 2, 'transitive closure'],
+
+  ['Dynamic Programming', 3, 'dynamic programming', 'optimal substructure', 'overlapping subproblem'],
+  ['0/1 Knapsack', 3, '0 1 knapsack', '01 knapsack', 'knapsack'],
+  ['Fractional Knapsack', 3, 'fractional knapsack'],
+  ['Longest Common Subsequence', 3, 'longest common subsequence', 'lcs'],
+  ['Matrix Chain Multiplication', 3, 'matrix chain multiplication', 'matrix chain', 'mcm'],
+  ['Resource Allocation', 3, 'resource allocation'],
+  ['Optimal BST', 3, 'optimal binary search tree', 'optimal bst'],
+
+  ['Backtracking', 4, 'backtracking'],
+  ['N Queens', 4, 'n queen', '8 queen', 'eight queen', '4 queen', 'four queen'],
+  ['Sum of Subsets', 4, 'sum subset', 'subset sum'],
+  ['Graph Colouring', 4, 'graph colouring', 'graph coloring', 'm colouring', 'm coloring'],
+  ['Hamiltonian Cycle', 4, 'hamiltonian cycle', 'hamiltonian circuit', 'hamiltonian'],
+  ['Branch and Bound', 4, 'branch and bound', 'branch bound', 'lc search'],
+  ['Travelling Salesman', 4, 'travelling salesman', 'traveling salesman', 'travelling salesperson', 'tsp'],
+
+  ['B Tree', 5, 'b tree'],
+  ['B+ Tree', 5, 'b+ tree'],
+  ['Red Black Tree', 5, 'red black tree', 'rb tree'],
+  ['Splay Tree', 5, 'splay tree'],
+  ['Trie', 5, 'trie'],
+  ['Binomial Heap', 5, 'binomial heap'],
+  ['Fibonacci Heap', 5, 'fibonacci heap'],
+  ['Skip List', 5, 'skip list'],
+];

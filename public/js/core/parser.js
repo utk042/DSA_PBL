@@ -5,14 +5,14 @@
 //   // comment
 //   @alias BST = Binary Search Tree      abbreviation the LCS merge cannot catch
 //   @hours AVL Tree = 3                  estimated study hours for a topic
-//   === 2023 ===                         start of a paper (year)
+//   === 2023 ===                         start of a paper (a year or any label)
 //   [Unit 2]                             syllabus unit for the following questions
 //   Q4 (10): Kruskal's Algorithm, Prim's Algorithm
 //   Q5: BFS; DFS                         marks optional; topics split on , or ;
 //
 // A line that is not a directive or a header is read as a question.
 
-const PAPER = /^(?:={2,}\s*(\d{4})\s*={2,}|@paper\s+(\d{4}))\s*$/i;
+const PAPER = /^(?:={2,}\s*(.+?)\s*={2,}|@paper\s+(.+?))\s*$/i;
 const UNIT = /^\[\s*unit\s*(\d+)\s*\]$|^@unit\s+(\d+)$/i;
 const ALIAS = /^@alias\s+(.+?)\s*=\s*(.+)$/i;
 const HOURS = /^@hours\s+(.+?)\s*=\s*([\d.]+)\s*h?$/i;
@@ -33,7 +33,8 @@ export function parse(text) {
     if ((m = line.match(ALIAS))) { aliases.set(m[1], m[2]); return; }
     if ((m = line.match(HOURS))) { hours.set(m[1], parseFloat(m[2])); return; }
     if ((m = line.match(PAPER))) {
-      paper = { year: Number(m[1] || m[2]), questions: [] };
+      const label = (m[1] || m[2]).trim();
+      paper = { year: /^\d{4}$/.test(label) ? Number(label) : label, questions: [] };
       papers.push(paper);
       unit = 0;
       return;
@@ -42,8 +43,8 @@ export function parse(text) {
     if (line.startsWith('@')) { warnings.push(`Line ${i + 1}: unknown directive "${line}"`); return; }
 
     if (!paper) {
-      warnings.push(`Line ${i + 1}: question before any "=== YEAR ===" header — filed under year 0`);
-      paper = { year: 0, questions: [] };
+      warnings.push(`Line ${i + 1}: question before any "=== YEAR ===" header, filed under "Untitled"`);
+      paper = { year: 'Untitled', questions: [] };
       papers.push(paper);
     }
     const q = line.match(QUESTION);
@@ -52,7 +53,6 @@ export function parse(text) {
     const body = q ? q[3] : line;
     const topics = body.split(/[,;]/).map((t) => t.trim()).filter(Boolean);
     if (!topics.length) { warnings.push(`Line ${i + 1}: no topics found`); return; }
-    if (!unit) warnings.push(`Line ${i + 1}: no [Unit n] header — unit left as 0`);
     paper.questions.push({ id, unit, marks, topics, line: i + 1 });
   });
 

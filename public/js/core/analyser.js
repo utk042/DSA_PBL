@@ -14,8 +14,10 @@ export const DEFAULTS = {
   budgetHours: 12,
   value: 'frequency',  // 'frequency' | 'marks'
   defaultHours: 2,     // study-hour estimate for topics without an @hours line
+  hoursOverride: null, // Map(key -> hours) set by the user in the UI
 };
 
+const byLabel = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
 const now = () => (globalThis.performance ? performance.now() : Date.now());
 const mostCommon = (counts) => [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0];
 
@@ -65,13 +67,14 @@ export function analyse(text, options = {}) {
             bst.insert(key);
             return {
               key, frequency: 0, marks: 0, years: [], unitCounts: new Map(), variants: new Map(),
-              studyHours: hoursByKey.get(key) ?? opt.defaultHours, hoursEstimated: !hoursByKey.has(key),
+              studyHours: opt.hoursOverride?.get(key) ?? hoursByKey.get(key) ?? opt.defaultHours,
+              hoursSet: Boolean(opt.hoursOverride?.has(key) || hoursByKey.has(key)),
             };
           },
           (d) => {
             d.frequency++;
             d.marks += share;
-            if (!d.years.includes(q.year)) { d.years.push(q.year); d.years.sort((a, b) => a - b); }
+            if (!d.years.includes(q.year)) { d.years.push(q.year); d.years.sort(byLabel); }
             d.unitCounts.set(q.unit, (d.unitCounts.get(q.unit) || 0) + 1);
             d.variants.set(q.raws[i], (d.variants.get(q.raws[i]) || 0) + 1);
           },

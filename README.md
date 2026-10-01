@@ -1,65 +1,70 @@
-# PYQ Topic Frequency Analyser
+# PYQ Topic Analyser
 
-DSA-II (CCSE0301) project-based learning — Utkarsh Raj Shukla · 2501330100398 · B.Tech CSE-F · Guide: Mr. Shamshad Ali
+Upload previous years' question papers and see:
 
-The analyser takes previous years' question papers and produces a topic-frequency table,
-a Top-N ranking, clusters of topics that are examined together, a revision route through
-each cluster, and the best set of topics to revise in a fixed number of hours.
+- which topics are asked most,
+- which topics are asked together,
+- what to revise in the hours you have.
 
-The full design write-up, covering why each data structure was chosen and which ones were
-rejected, is in **[REPORT.md](REPORT.md)**.
+DSA-II (CCSE0301) project by Utkarsh Raj Shukla (2501330100398), B.Tech CSE-F, guided by Mr. Shamshad Ali.
+The design choices are explained in [REPORT.md](REPORT.md).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Futk042%2FDSA_PBL)
+## Using it
 
-## Live demo
+Open the site, then drop in your papers. It reads:
 
-The demo is a static site in `public/`. It has no build step and no dependencies, and
-every stage of the pipeline runs in the browser. It opens with a synthetic five-year sample,
-and there is a second preset that reproduces the worked example from Section 7 of the
-report. You can also paste your own papers or load a `.txt` file.
+| Format | Notes |
+|---|---|
+| PDF | Text PDFs. A scanned PDF has no text, so it needs OCR first. |
+| Word `.docx` | |
+| PowerPoint `.pptx` | |
+| Old `.doc` / `.ppt` | Best effort. Topics are found, but question numbers may be lost. |
+| `.txt` | Free text, or the format below. |
 
-| Pipeline stage | Implementation | File |
-|---|---|---|
-| 1 Parser | line-based PYQ format | `public/js/core/parser.js` |
-| 2 Normaliser | clean-up + LCS similarity merge | `public/js/core/normalise.js`, `dp.js` |
-| 3 Topic store | AVL tree (all four rotations), in/pre/post-order | `public/js/core/avl.js` |
-| 4 Ranking | binary max-heap, Top-N, Heap Sort | `public/js/core/heap.js` |
-| 5 Co-occurrence graph | weighted adjacency list, `w = 1/count` | `public/js/core/graph.js` |
-| 6 Clustering | BFS, DFS, connected components | `graph.js` |
-| 7 Revision route | Kruskal (union-find), Prim (heap) | `graph.js` |
-| 8 Bridge topics | Dijkstra (heap) | `graph.js` |
-| 9 Allocator | 0/1 Knapsack vs greedy baseline | `dp.js` |
-| Wiring | whole pipeline + per-stage timings | `public/js/core/analyser.js` |
+Use one file per paper. The year is taken from the file name or the top of the paper, and you can change it after upload.
+Topics are found by matching question text against the DSA-II topic list in `public/js/core/vocabulary.js`.
+To check or fix what was read, open **Check or edit the extracted text**.
 
-## Deploying on Vercel
+Everything runs in the browser. Files are never uploaded anywhere.
 
-1. Go to <https://vercel.com/new> and import `utk042/DSA_PBL`, or click the button above.
-2. Leave every setting at its default. `vercel.json` already tells Vercel that there is no
-   framework, no install step and no build step, and that the site is served from `public/`.
-3. Click **Deploy**. Every push to the production branch redeploys automatically.
-
-You can also deploy from the CLI: `npx vercel --prod` from the repo root.
-
-## Running locally
-
-```bash
-npm test            # 12 unit tests (Node 18+, no dependencies)
-npm run dev         # serves public/ on http://localhost:3000
-# or: python3 -m http.server 3000 -d public
-```
-
-The page uses ES modules, so open it through a server and not as `file://`.
-
-## Input format
+### Text format
 
 ```text
-// comment
-@alias BST = Binary Search Tree     abbreviation the LCS merge can't catch
-@hours AVL Tree = 3                 study-hour estimate (default 2)
-=== 2023 ===                        a paper (year)
-[Unit 2]                            syllabus unit for the next questions
-Q4 (10): Kruskal's Algorithm, Prim  marks optional; topics split on , or ;
+=== 2023 ===                       a paper (a year or any label)
+[Unit 2]                           unit for the questions below
+Q4 (10): Kruskal, Prim             question, marks (optional), topics
+@hours AVL Tree = 3                optional: study hours for a topic
+@alias BST = Binary Search Tree    optional: short forms
 ```
 
-The sample papers in `public/js/samples.js` are synthetic. They exist to show how the
-pipeline works and are not real university question papers.
+## How it works
+
+| Step | Data structure / algorithm | Code |
+|---|---|---|
+| Read files | pdf.js, a small ZIP reader for docx/pptx | `public/js/files.js`, `core/readers.js`, `core/zip.js` |
+| Find questions and topics | phrase matching against the topic list | `core/extract.js` |
+| Merge spellings | LCS similarity | `core/normalise.js`, `core/dp.js` |
+| Count topics | AVL tree | `core/avl.js` |
+| Rank | max-heap, heap sort | `core/heap.js` |
+| Link topics | weighted adjacency list, BFS, DFS components | `core/graph.js` |
+| Revision order | Kruskal, Prim | `core/graph.js` |
+| Path between topics | Dijkstra | `core/graph.js` |
+| Study plan | 0/1 knapsack | `core/dp.js` |
+
+## Run locally
+
+```bash
+npm test        # Node 18+, no dependencies
+npm run dev     # http://localhost:3000
+```
+
+Open the page through a server, not as a `file://` URL.
+
+## Deploy on Vercel
+
+Import the repo at <https://vercel.com/new> and keep the defaults.
+`vercel.json` serves `public/` with no build step.
+Each push to the production branch redeploys the site.
+
+pdf.js (Apache-2.0) is included in `public/vendor/pdfjs`.
+The sample papers in `public/samples` and the sample data in the app are made up. They are not real exam papers.

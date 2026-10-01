@@ -1,4 +1,4 @@
-// Demo inputs. Both are synthetic, written to exercise the pipeline —
+// Demo inputs. Both are made up to exercise the pipeline;
 // they are not real university question papers.
 
 export const WORKED_EXAMPLE = `// Section 7 of the report: six topics across three years.
@@ -42,8 +42,7 @@ Q5 (10): Graph Traversal, Dijkstra
 Q6 (10): Matrix Chain
 `;
 
-export const FIVE_YEARS = `// Five years of DSA-II style papers (synthetic, for the demo).
-// Spelling variants are deliberate — watch the normaliser merge them.
+export const FIVE_YEARS = `// Five made-up DSA-II papers. Some names are spelled differently on purpose.
 @alias BST = Binary Search Tree
 @alias MST = Minimum Spanning Tree
 @alias LCS = Longest Common Subsequence

@@ -31,7 +31,7 @@ export function treeSVG(root, label = (n) => n.key) {
   const lines = nodes.flatMap((p) => [p.l, p.r].filter(Boolean).map((c) =>
     `<line x1="${px(p)}" y1="${py(p)}" x2="${px(c)}" y2="${py(c)}" class="edge"/>`)).join('');
   const circles = nodes.map((p) => `
-    <g class="tnode"><title>${esc(label(p.n))} — frequency ${p.n.data.frequency}, height ${p.n.height}</title>
+    <g class="tnode"><title>${esc(label(p.n))}: asked ${p.n.data.frequency}×, height ${p.n.height}</title>
       <circle cx="${px(p)}" cy="${py(p)}" r="15"/>
       <text x="${px(p)}" y="${py(p) + 4}" class="freq">${p.n.data.frequency}</text>
       <text x="${px(p)}" y="${py(p) + 30}" class="lbl">${esc(short(label(p.n), 11))}</text>
@@ -122,9 +122,11 @@ function placeCluster(graph, { c, x, y, w, h }, pos) {
 
 export function graphSVG(graph, clusters, topic, { highlight = [], mst = [] } = {}) {
   const W = 960;
-  const { pos, H } = layout(graph, clusters, W);
+  const linked = clusters.filter((c) => c.keys.length > 1);
+  const { pos, H } = layout(graph, linked, W);
   const clusterOf = new Map();
   clusters.forEach((c, i) => c.keys.forEach((k) => clusterOf.set(k, i)));
+  if (!linked.length) return '<p class="graph-empty">No two topics are asked in the same question yet.</p>';
   const maxF = Math.max(1, ...[...topic.values()].map((d) => d.frequency));
   const onPath = new Set();
   for (let i = 0; i + 1 < highlight.length; i++) onPath.add([highlight[i], highlight[i + 1]].sort().join('|'));
@@ -134,13 +136,13 @@ export function graphSVG(graph, clusters, topic, { highlight = [], mst = [] } = 
     const b = pos.get(e.v);
     const id = [e.u, e.v].sort().join('|');
     const cls = onPath.has(id) ? 'gedge path' : inMst.has(id) ? 'gedge mst' : 'gedge';
-    return `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="${cls}" style="stroke-width:${(1 + Math.min(e.count, 5) * 0.9).toFixed(1)}"><title>${esc(topic.get(e.u).display)} — ${esc(topic.get(e.v).display)}: asked together ${e.count}×, weight ${(1 / e.count).toFixed(2)}</title></line>`;
+    return `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="${cls}" style="stroke-width:${(1 + Math.min(e.count, 5) * 0.9).toFixed(1)}"><title>${esc(topic.get(e.u).display)} and ${esc(topic.get(e.v).display)}: asked together ${e.count}×</title></line>`;
   }).join('');
   const hl = new Set(highlight);
   const nodes = [...pos].map(([k, p]) => {
     const d = topic.get(k);
     const r = 6 + 10 * (d.frequency / maxF);
-    return `<g class="gnode${hl.has(k) ? ' on' : ''}"><title>${esc(d.display)} — asked ${d.frequency}×, cluster ${clusterOf.get(k) + 1}</title>
+    return `<g class="gnode${hl.has(k) ? ' on' : ''}"><title>${esc(d.display)}: asked ${d.frequency}×, group ${clusterOf.get(k) + 1}</title>
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r.toFixed(1)}" style="fill:${clusterColor(clusterOf.get(k))}"/>
       <text x="${p.x.toFixed(1)}" y="${(p.y + r + 12).toFixed(1)}">${esc(short(d.display, 18))}</text></g>`;
   }).join('');
