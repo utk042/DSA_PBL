@@ -1,0 +1,14 @@
+{
+  "name": "pyq-topic-frequency-analyser",
+  "version": "1.0.0",
+  "description": "PYQ Topic Frequency Analyser — DSA-II project (AVL, heaps, graphs, DP) with a static web demo.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "dev": "npx --yes serve public -l 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

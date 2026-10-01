@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PYQ Topic Analyser</title>
+  <meta name="description" content="Turns previous-year question papers into a topic frequency table, Top-N ranking, topic clusters, revision routes and a time-bounded revision shortlist — AVL tree, heaps, graphs and dynamic programming.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M8 23V14M14 23V9M20 23v-6M26 23V12' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <p class="eyebrow">DSA-II (CCSE0301) · Project-Based Learning</p>
+      <h1>PYQ Topic Frequency Analyser</h1>
+      <p class="lede">Paste previous years' question papers. The analyser merges spelling variants, counts every topic in an AVL tree, ranks them with a max-heap, groups topics that are examined together, and picks the revision shortlist that fits your hours.</p>
+      <p class="byline">Utkarsh Raj Shukla · 2501330100398 · B.Tech CSE-F · Guide: Mr. Shamshad Ali · <a href="https://github.com/utk042/DSA_PBL">Source on GitHub</a></p>
+      <ol class="pipeline" aria-label="Pipeline stages">
+        <li><a href="#s-normalise"><b>1–2</b> Parse &amp; normalise <small>LCS</small></a></li>
+        <li><a href="#s-store"><b>3</b> Topic store <small>AVL</small></a></li>
+        <li><a href="#s-rank"><b>4</b> Ranking <small>Max-Heap</small></a></li>
+        <li><a href="#s-graph"><b>5</b> Graph <small>Adj. list</small></a></li>
+        <li><a href="#s-clusters"><b>6–7</b> Clusters &amp; routes <small>DFS · Kruskal · Prim</small></a></li>
+        <li><a href="#s-bridge"><b>8</b> Bridges <small>BFS · Dijkstra</small></a></li>
+        <li><a href="#s-alloc"><b>9</b> Allocator <small>0/1 Knapsack</small></a></li>
+      </ol>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card input-card" aria-labelledby="h-input">
+      <div class="card-head">
+        <h2 id="h-input">Input</h2>
+        <div class="row">
+          <label class="field inline">Sample
+            <select id="preset"></select>
+          </label>
+          <label class="btn ghost" for="file">Load .txt<input id="file" type="file" accept=".txt,text/plain" hidden></label>
+          <button class="btn ghost" id="format-toggle" type="button" aria-expanded="false">Input format</button>
+        </div>
+      </div>
+      <div id="format-help" class="format-help" hidden>
+        <pre>// comment
+@alias BST = Binary Search Tree     abbreviations LCS can't catch
+@hours AVL Tree = 3                 study-hour estimate (default 2)
+=== 2023 ===                        a paper (year)
+[Unit 2]                            syllabus unit for the next questions
+Q4 (10): Kruskal's Algorithm, Prim  marks optional; topics split on , or ;</pre>
+      </div>
+      <textarea id="text" spellcheck="false" aria-label="PYQ text"></textarea>
+      <div class="controls">
+        <label class="field">LCS merge threshold <output id="threshold-out"></output>
+          <input id="threshold" type="range" min="0.6" max="1" step="0.01">
+        </label>
+        <label class="field">Top-N
+          <input id="topn" type="number" min="1" max="50">
+        </label>
+        <label class="field">Edge scope
+          <select id="scope">
+            <option value="question">Same question</option>
+            <option value="unit">Same unit of a paper</option>
+          </select>
+        </label>
+        <label class="field">Value per topic
+          <select id="value">
+            <option value="frequency">Frequency</option>
+            <option value="marks">Marks</option>
+          </select>
+        </label>
+        <label class="field">Revision hours <output id="budget-out"></output>
+          <input id="budget" type="range" min="1" max="40" step="0.5">
+        </label>
+      </div>
+      <p id="warnings" class="warnings" hidden></p>
+    </section>
+
+    <section id="stats" class="stats" aria-label="Summary"></section>
+
+    <section class="card" id="s-normalise">
+      <div class="card-head"><h2>1–2 · Parser &amp; normaliser</h2><span class="tag">LCS · O(mn)</span></div>
+      <p class="note">Each raw keyword is cleaned (case, punctuation, plurals, filler words), then compared with every known topic. <code>similarity = LCS(a, b) / max(|a|, |b|)</code>; at or above the threshold the two are merged.</p>
+      <div id="normalise"></div>
+    </section>
+
+    <section class="card" id="s-store">
+      <div class="card-head"><h2>3 · Topic store</h2><span class="tag">AVL tree · O(log n)</span></div>
+      <div id="store-stats" class="mini-stats"></div>
+      <p class="note">Node label = frequency. Hover a node for its topic. Scroll sideways on narrow screens.</p>
+      <div class="scroll-x" id="tree"></div>
+      <details>
+        <summary>Traversals</summary>
+        <div id="traversals" class="traversals"></div>
+      </details>
+      <h3>Topic-frequency table <span class="muted">(in-order traversal — alphabetical)</span></h3>
+      <div class="scroll-x"><table id="table" class="data"></table></div>
+    </section>
+
+    <section class="card" id="s-rank">
+      <div class="card-head"><h2>4 · Ranking</h2><span class="tag">Max-Heap · Top-N O(n + N log n)</span></div>
+      <div id="topn-list" class="bars"></div>
+      <details>
+        <summary>Full ranked list (Heap Sort, O(n log n))</summary>
+        <ol id="ranked" class="ranked"></ol>
+      </details>
+    </section>
+
+    <section class="card" id="s-graph">
+      <div class="card-head"><h2>5 · Co-occurrence graph</h2><span class="tag">Adjacency list · O(V + E)</span></div>
+      <p class="note">Edge = topics asked together; thicker = more often. Weight is <code>1 / count</code>, so strong links are “short”. Colour = cluster. <span class="key mst"></span> Kruskal MST edge <span class="key path"></span> Dijkstra path.</p>
+      <div id="graph" class="graph"></div>
+      <h3>Unit × unit view <span class="muted">(fixed 5 × 5 adjacency matrix)</span></h3>
+      <div class="scroll-x"><table id="unit-matrix" class="matrix"></table></div>
+    </section>
+
+    <section class="card" id="s-clusters">
+      <div class="card-head"><h2>6–7 · Clusters &amp; revision routes</h2><span class="tag">DFS components · Kruskal · Prim</span></div>
+      <p class="note">Each connected component is a revision module. The route is Prim's order, started from the cluster's most-asked topic; Kruskal's backbone has the same total weight.</p>
+      <div id="clusters" class="clusters"></div>
+    </section>
+
+    <section class="card" id="s-bridge">
+      <div class="card-head"><h2>8 · Explore &amp; bridge topics</h2><span class="tag">BFS O(V + E) · Dijkstra O((V + E) log V)</span></div>
+      <div class="two">
+        <div>
+          <h3>What is asked alongside…</h3>
+          <label class="field">Topic <select id="bfs-from"></select></label>
+          <div id="bfs"></div>
+        </div>
+        <div>
+          <h3>Bridge from what I know to what I want</h3>
+          <div class="row">
+            <label class="field">Revised <select id="dj-from"></select></label>
+            <label class="field">Target <select id="dj-to"></select></label>
+          </div>
+          <div id="dijkstra"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="s-alloc">
+      <div class="card-head"><h2>9 · Revision-time allocator</h2><span class="tag">0/1 Knapsack · O(nW)</span></div>
+      <div id="alloc"></div>
+    </section>
+
+    <section class="card" id="s-papers">
+      <div class="card-head"><h2>Paper-to-paper repetition</h2><span class="tag">LCS on topic sequences</span></div>
+      <p class="note">Share of one year's topic sequence that reappears, in order, in another year's.</p>
+      <div class="scroll-x"><table id="paper-lcs" class="matrix"></table></div>
+    </section>
+
+    <section class="card" id="s-complexity">
+      <div class="card-head"><h2>Complexity summary</h2><span id="timing-total" class="tag"></span></div>
+      <div class="scroll-x"><table id="complexity" class="data"></table></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Sample inputs are synthetic and only illustrate the pipeline. Everything runs in your browser — nothing is uploaded.</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
