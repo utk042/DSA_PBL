@@ -8,7 +8,7 @@ import { lcs, similarity, knapsack, greedyByValue } from '../public/js/core/dp.j
 import { canonical, Normaliser } from '../public/js/core/normalise.js';
 import { parse } from '../public/js/core/parser.js';
 import { analyse } from '../public/js/core/analyser.js';
-import { WORKED_EXAMPLE, FIVE_YEARS } from '../public/js/samples.js';
+import { WORKED_EXAMPLE, FIVE_YEARS } from './fixtures/samples.js';
 
 const isAVL = (n) => {
   if (!n) return 0;

@@ -1,11 +1,10 @@
 import { analyse, DEFAULTS } from './core/analyser.js';
 import { extractQuestions, detectYear, toStructured, isStructured } from './core/extract.js';
-import { PRESETS } from './samples.js';
 import { readFile, ACCEPT } from './files.js';
 import { treeSVG, graphSVG, clusterColor } from './viz.js';
+import { esc, barChart, heatmap, stackedRows, compareBars, unitLegend, attachTooltips, UNITS, unitName, unitVar } from './charts.js';
 
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (x, d = 1) => (Number.isInteger(x) ? String(x) : x.toFixed(d));
 const hrs = (h) => `${num(h)} h`;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -16,8 +15,6 @@ const store = {
 };
 
 const state = {
-  source: 'sample',        // 'sample' | 'files'
-  preset: 'five',
   files: [],               // { id, name, ext, status, label, text, questions, blocks, unmatched, note, error }
   threshold: DEFAULTS.threshold,
   edgeScope: DEFAULTS.edgeScope,
@@ -31,12 +28,15 @@ const state = {
   hoursOpen: false,
   query: '',
   sort: 'count',
+  showAll: false,
   bfsFrom: null,
   djFrom: null,
   djTo: null,
 };
 let result = null;
 let fileSeq = 0;
+
+attachTooltips(document.body);
 
 // ---------- input ----------
 
@@ -47,8 +47,6 @@ drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.ad
 drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
 
-document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => loadPreset(b.dataset.preset)));
-
 let typing = null;
 $('text').addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(run, 300); });
 
@@ -56,8 +54,8 @@ $('files').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-remove]');
   if (!btn) return;
   state.files = state.files.filter((f) => f.id !== Number(btn.dataset.remove));
-  if (!state.files.length) loadPreset(state.preset);
-  else rebuildFromFiles();
+  if (!state.files.length) resetPicks();
+  rebuildFromFiles();
 });
 $('files').addEventListener('change', (e) => {
   const input = e.target.closest('[data-label]');
@@ -74,26 +72,12 @@ $('theme').addEventListener('click', () => {
   store.set('theme', document.documentElement.dataset.theme);
 });
 
-function loadPreset(id) {
-  const p = PRESETS.find((x) => x.id === id) || PRESETS[0];
-  state.source = 'sample';
-  state.preset = p.id;
-  state.files = [];
-  state.budget = p.budgetHours;
-  resetPicks();
-  $('text').value = p.text;
-  renderFiles();
-  run();
-}
-
 async function addFiles(list) {
   const incoming = [...list].map((file) => ({
     id: ++fileSeq, file, name: file.name, ext: (file.name.match(/\.([a-z0-9]+)$/i) || [, '?'])[1].toLowerCase(),
     status: 'reading', label: '', questions: [], blocks: 0, unmatched: 0, note: null, error: null,
   }));
   if (!incoming.length) return;
-  if (state.source === 'sample') { state.files = []; resetPicks(); }
-  state.source = 'files';
   state.files.push(...incoming);
   renderFiles();
   await Promise.all(incoming.map(async (f) => {
@@ -143,30 +127,35 @@ function rebuildFromFiles() {
   run();
 }
 
+const ICON_X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
 function renderFiles() {
   drop.classList.toggle('compact', state.files.length > 0);
   $('files').innerHTML = state.files.map((f) => {
     let meta;
-    if (f.status === 'reading') meta = '<div class="meta">Reading…</div>';
-    else if (f.status === 'error' || f.error) meta = `<div class="meta err">${esc(f.error)}</div>`;
-    else if (f.structured) meta = '<div class="meta">Read as analyser text</div>';
+    let cls = '';
+    if (f.status === 'reading') { meta = '<span class="meta">Reading…</span>'; cls = 'reading'; }
+    else if (f.status === 'error' || f.error) { meta = `<span class="meta err">${esc(f.error)}</span>`; cls = 'failed'; }
+    else if (f.structured) meta = '<span class="meta">Read as analyser text</span>';
     else {
-      meta = `<div class="meta"><label>Paper <input data-label="${f.id}" value="${esc(f.label)}" aria-label="Paper name for ${esc(f.name)}"></label>
-        <span>${plural(f.questions.length, 'question')} with topics${f.unmatched ? `, ${f.unmatched} skipped` : ''}</span></div>
-        ${f.note ? `<div class="meta note">${esc(f.note)}</div>` : ''}`;
+      meta = `<span class="meta">${plural(f.questions.length, 'question')}${f.unmatched ? ` · ${f.unmatched} without a known topic` : ''}${f.note ? ` · <span class="warn">${esc(f.note)}</span>` : ''}</span>`;
     }
-    return `<li class="file"><span class="ext">${esc(f.ext)}</span><span class="name" title="${esc(f.name)}">${esc(f.name)}</span>
-      <button class="icon-btn" type="button" data-remove="${f.id}" aria-label="Remove ${esc(f.name)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      ${meta}</li>`;
+    const label = f.status === 'ok' && !f.structured && !f.error
+      ? `<label class="year"><span class="sr-only">Paper name for ${esc(f.name)}</span><input data-label="${f.id}" value="${esc(f.label)}"></label>`
+      : '';
+    return `<li class="file ${cls}"><span class="ext">${esc(f.ext)}</span>
+      <span class="file-main"><span class="name" title="${esc(f.name)}">${esc(f.name)}</span>${meta}</span>
+      ${label}
+      <button class="icon-btn" type="button" data-remove="${f.id}" aria-label="Remove ${esc(f.name)}">${ICON_X}</button></li>`;
   }).join('');
 }
 
 // ---------- tabs ----------
 
-const TABS = ['overview', 'plan', 'topics', 'groups', 'links', 'how'];
-const tabEls = TABS.map((t) => $(`tab-${t}`));
-tabEls.forEach((el, i) => {
-  el.addEventListener('click', () => selectTab(TABS[i]));
+const TABS = ['overview', 'plan', 'links', 'how'];
+TABS.forEach((t, i) => {
+  const el = $(`tab-${t}`);
+  el.addEventListener('click', () => selectTab(t));
   el.addEventListener('keydown', (e) => {
     const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!d) return;
@@ -184,10 +173,18 @@ function selectTab(tab, scroll = false) {
     $(`tab-${t}`).tabIndex = on ? 0 : -1;
     $(t).hidden = !on;
   });
-  $(`tab-${tab}`).scrollIntoView({ block: 'nearest', inline: 'nearest' });
   renderTab();
   if (scroll) document.querySelector('.tabs-bar').scrollIntoView({ behavior: 'smooth' });
 }
+
+let resizeT = null;
+let lastW = window.innerWidth;
+window.addEventListener('resize', () => {
+  if (window.innerWidth === lastW) return;
+  lastW = window.innerWidth;
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { if (state.tab === 'links' && result) drawPath(); }, 150);
+});
 
 // ---------- pipeline ----------
 
@@ -206,8 +203,11 @@ function run() {
   if (!keys.includes(state.bfsFrom)) state.bfsFrom = linked;
   if (!keys.includes(state.djFrom)) state.djFrom = linked;
   if (!keys.includes(state.djTo) || state.djTo === state.djFrom) state.djTo = farthestFrom(state.djFrom) ?? keys[1] ?? null;
+  const has = result.table.length > 0;
+  document.body.classList.toggle('has-data', has);
+  $('results').hidden = !has;
   renderNotice();
-  renderTab();
+  if (has) renderTab();
 }
 
 function farthestFrom(src) {
@@ -223,63 +223,123 @@ const byCount = (keys) => [...keys].sort((x, y) => result.topic.get(y).frequency
 
 function renderNotice() {
   const out = [];
-  if (state.source === 'sample') {
-    out.push(`<p class="banner info">Showing ${state.preset === 'worked' ? 'the worked example from the report' : 'sample data (made-up papers, not real exams)'}. Upload your own papers above to replace it.</p>`);
+  const reading = state.files.some((f) => f.status === 'reading');
+  if (!result.table.length && state.files.length && !reading) {
+    out.push('<p class="banner">No known DSA-II topics were found in these files. Open "Type or edit papers as text" to see what was read.</p>');
   }
   const w = result.warnings;
-  if (w.length) out.push(`<p class="banner">${w.length > 3 ? `${w.length} lines could not be read, for example: ` : ''}${esc(w.slice(0, 3).join('; '))}</p>`);
+  if (w.length) out.push(`<p class="banner">${w.length > 3 ? `${w.length} lines could not be read, for example: ` : 'Could not read: '}${esc(w.slice(0, 3).join('; '))}</p>`);
   $('notice').innerHTML = out.join('');
 }
 
 function renderTab() {
-  if (!result) return;
-  const empty = !result.table.length;
-  $('results').classList.toggle('is-empty', empty);
-  const el = $(state.tab);
-  if (empty) {
-    el.innerHTML = `<div class="card empty">No topics found yet. ${state.files.some((f) => f.status === 'reading') ? 'Still reading files…' : 'Add papers above, or open "Check or edit the extracted text" to see what was read.'}</div>`;
-    return;
-  }
-  ({ overview, plan, topics, groups, links, how })[state.tab](el);
+  ({ overview, plan, links, how })[state.tab]($(state.tab));
 }
+
+// Per-topic, per-paper counts and per-paper unit counts, straight from the questions.
+function breakdown() {
+  const papers = result.years;
+  const col = new Map(papers.map((p, i) => [p, i]));
+  const byTopic = new Map(result.table.map((d) => [d.key, papers.map(() => 0)]));
+  const byPaper = papers.map((p) => ({ label: String(p), counts: new Map() }));
+  for (const q of result.questions) {
+    const j = col.get(q.year);
+    for (const k of q.keys) byTopic.get(k)[j]++;
+    const c = byPaper[j].counts;
+    const u = q.unit >= 1 && q.unit <= 5 ? q.unit : 0;
+    c.set(u, (c.get(u) || 0) + 1);
+  }
+  return { papers, byTopic, byPaper };
+}
+
+const card = (title, sub, body, extra = '') => `<section class="card">
+  <header class="card-head"><div><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${extra}</header>${body}</section>`;
 
 // ---------- Overview ----------
 
 function overview(el) {
   const r = result;
-  const max = Math.max(1, ...r.top.map((d) => d.frequency));
-  const a = r.allocation;
+  const { papers, byTopic, byPaper } = breakdown();
+  const lead = r.ranked[0];
+  const leadIn = lead.years.length;
+  const units = UNITS.filter((u) => r.questions.some((q) => q.unit === u));
+  if (r.questions.some((q) => !(q.unit >= 1 && q.unit <= 5))) units.push(0);
+  const everyPaper = r.ranked.filter((d) => d.years.length === papers.length).length;
+  const totalMarks = r.questions.reduce((s, q) => s + (q.marks || 0), 0);
+
+  const bars = barChart(r.top.map((d) => ({
+    label: d.display, value: d.frequency, unit: d.unit,
+    tip: [d.display, `Asked ${d.frequency}× in ${d.years.length} of ${papers.length} papers`, d.marks ? `${num(d.marks)} marks in total` : '', d.unit ? unitName(d.unit) : ''],
+  })));
+  const heatTopics = r.ranked.slice(0, Math.min(12, r.ranked.length));
+
   el.innerHTML = `
-    <div class="stats">
-      <div class="stat"><b>${r.parsed.papers.length}</b><span>papers</span></div>
-      <div class="stat"><b>${r.questions.length}</b><span>questions</span></div>
-      <div class="stat"><b>${r.table.length}</b><span>topics</span></div>
-      <div class="stat"><b>${r.clusters.length}</b><span>topic groups</span></div>
+    <div class="kpis">
+      <div class="kpi"><span class="kpi-label">Papers</span><b>${papers.length}</b><span class="kpi-sub">${papers.length > 1 ? `${esc(papers[0])} – ${esc(papers.at(-1))}` : esc(papers[0])}</span></div>
+      <div class="kpi"><span class="kpi-label">Questions</span><b>${r.questions.length}</b><span class="kpi-sub">${totalMarks ? `${num(totalMarks)} marks` : 'with a known topic'}</span></div>
+      <div class="kpi"><span class="kpi-label">Topics</span><b>${r.table.length}</b><span class="kpi-sub">${papers.length > 1 ? `${everyPaper} in every paper` : `${r.clusters.length} groups`}</span></div>
+      <div class="kpi kpi-lead"><span class="kpi-label">Most asked</span><b class="kpi-name" title="${esc(lead.display)}">${esc(lead.display)}</b><span class="kpi-sub">${lead.frequency}× · in ${leadIn} of ${papers.length} papers</span></div>
     </div>
-    <div class="grid-2">
-      <section class="card">
-        <div class="card-head"><h2>Most asked</h2>
-          <label class="small muted">Show <select id="topn" aria-label="How many topics to show">${[5, 10, 15, 20].map((n) => `<option ${n === state.topN ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-        </div>
-        <ol class="ranks">${r.top.map((d, i) => `
-          <li class="rank"><span class="n">${i + 1}</span><span class="t" title="${esc(d.display)}">${esc(d.display)}</span>
-            <span class="c">${d.frequency}<small> ×</small></span>
-            <span class="track"><span class="fill" style="width:${(100 * d.frequency) / max}%"></span></span></li>`).join('')}
-        </ol>
-        <p class="small muted" style="margin:14px 0 0">Asked in ${r.years.length > 1 ? `${r.years[0]} to ${r.years.at(-1)}` : esc(r.years[0] ?? '')}. <a href="#topics" data-go="topics">See all topics</a></p>
-      </section>
-      <section class="card">
-        <div class="card-head"><h2>Revise first</h2><p>The best set of topics for ${hrs(state.budget)} of revision.</p></div>
-        <ol class="route">${byCount(a.chosen).map((k) => `<li><span>${esc(name(k))} <small>${hrs(result.topic.get(k).studyHours)}</small></span></li>`).join('') || '<li><span class="muted">Nothing fits in this time.</span></li>'}</ol>
-        <p style="margin:14px 0 0"><a class="btn small" href="#plan" data-go="plan">Change hours</a></p>
-      </section>
-    </div>`;
+
+    <div class="grid">
+      ${card('Most asked topics', 'Times each topic appears in a question, coloured by unit.', `${bars}${units.length > 1 ? unitLegend(units) : ''}`,
+        `<label class="inline-select"><span class="sr-only">How many topics</span><select id="topn">${[5, 10, 15, 20].map((n) => `<option value="${n}" ${n === state.topN ? 'selected' : ''}>Top ${n}</option>`).join('')}</select></label>`)}
+      ${card('Questions per unit', papers.length > 1 ? 'How each paper splits its questions across units.' : 'How the paper splits its questions across units.',
+        `${stackedRows(byPaper, units)}${unitLegend(units)}${unitTotals(units)}`)}
+    </div>
+
+    ${papers.length > 1 ? card('Topic by paper', `How often the ${heatTopics.length} most-asked topics appear in each paper. A full row means it comes up every year.`,
+      heatmap(heatTopics.map((d) => d.display), papers.map(String), heatTopics.map((d) => byTopic.get(d.key)))) : ''}
+
+    ${card('All topics', `${plural(r.table.length, 'topic')} found.`, `
+      <div class="toolbar">
+        <input type="search" id="q" placeholder="Search topics" value="${esc(state.query)}" aria-label="Search topics">
+        <select id="sort" aria-label="Sort topics">
+          <option value="count" ${state.sort === 'count' ? 'selected' : ''}>Most asked</option>
+          <option value="az" ${state.sort === 'az' ? 'selected' : ''}>A to Z</option>
+          <option value="unit" ${state.sort === 'unit' ? 'selected' : ''}>By unit</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table class="topics">
+        <thead><tr><th>Topic</th><th class="num">Asked</th><th class="hide-sm">Papers</th><th class="num hide-sm">Marks</th></tr></thead>
+        <tbody id="topic-rows"></tbody>
+      </table></div>
+      <button type="button" class="more" id="more" hidden></button>`)}`;
+
   el.querySelector('#topn').addEventListener('change', (e) => { state.topN = Number(e.target.value); run(); });
-  bindGo(el);
+  const draw = () => {
+    const q = state.query.toLowerCase();
+    let list = state.sort === 'az' ? r.table : state.sort === 'unit'
+      ? [...r.ranked].sort((a, b) => (a.unit || 99) - (b.unit || 99))
+      : r.ranked;
+    if (q) list = list.filter((d) => d.display.toLowerCase().includes(q) || [...d.variants.keys()].some((v) => v.toLowerCase().includes(q)));
+    const more = el.querySelector('#more');
+    const cut = !state.showAll && !q && list.length > 10;
+    more.hidden = !cut && !(state.showAll && list.length > 10);
+    more.textContent = cut ? `Show all ${list.length} topics` : 'Show fewer';
+    if (cut) list = list.slice(0, 10);
+    el.querySelector('#topic-rows').innerHTML = list.map((d) => {
+      const other = [...d.variants.keys()].filter((v) => v !== d.display);
+      const share = d.years.length / papers.length;
+      return `<tr>
+        <td><span class="dot" style="background:${unitVar(d.unit)}" aria-hidden="true"></span><span class="t">${esc(d.display)}</span>
+          <span class="sub">${d.unit ? unitName(d.unit) : 'No unit'}${other.length ? ` · also “${other.map(esc).join('”, “')}”` : ''}</span></td>
+        <td class="num strong">${d.frequency}</td>
+        <td class="hide-sm"><span class="mini" ${`data-tip="${esc(`${d.display}\nIn ${d.years.join(', ')}`)}" tabindex="0"`}><span class="mini-track"><span style="width:${share * 100}%"></span></span>${d.years.length}/${papers.length}</span></td>
+        <td class="num hide-sm">${d.marks ? num(d.marks) : '–'}</td></tr>`;
+    }).join('') || '<tr><td colspan="4" class="empty">No topic matches that search.</td></tr>';
+  };
+  el.querySelector('#q').addEventListener('input', (e) => { state.query = e.target.value; draw(); });
+  el.querySelector('#sort').addEventListener('change', (e) => { state.sort = e.target.value; draw(); });
+  el.querySelector('#more').addEventListener('click', () => { state.showAll = !state.showAll; draw(); });
+  draw();
 }
 
-function bindGo(el) {
-  el.querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); selectTab(a.dataset.go, true); }));
+function unitTotals(units) {
+  const total = result.questions.length || 1;
+  const counts = new Map(units.map((u) => [u, 0]));
+  for (const q of result.questions) { const u = q.unit >= 1 && q.unit <= 5 ? q.unit : 0; counts.set(u, (counts.get(u) || 0) + 1); }
+  return `<dl class="unit-totals">${units.map((u) => `<div><dt>${unitName(u)}</dt><dd>${Math.round((100 * counts.get(u)) / total)}%</dd></div>`).join('')}</dl>`;
 }
 
 // ---------- Study plan ----------
@@ -291,42 +351,62 @@ function plan(el) {
   const byMarks = state.value === 'marks';
   const total = r.items.reduce((s, it) => s + it.value, 0) || 1;
   const unitWord = byMarks ? 'marks' : 'question appearances';
-  const maxBudget = Math.max(10, Math.ceil(r.items.reduce((s, it) => s + it.hours, 0)));
+  const allHours = r.items.reduce((s, it) => s + it.hours, 0);
+  const maxBudget = Math.max(10, Math.ceil(allHours));
   const chosen = byCount(a.chosen);
   const hasMarks = r.table.some((d) => d.marks > 0);
+  const used = Math.min(1, a.hours / state.budget);
+
   el.innerHTML = `
-    <section class="card">
+    <section class="card plan-top">
       <div class="budget">
-        <div class="budget-top"><label for="budget"><strong>Hours you have</strong></label><output id="budget-out">${hrs(state.budget)}</output></div>
+        <div class="budget-head">
+          <label for="budget">Hours you have</label>
+          <output id="budget-out">${hrs(state.budget)}</output>
+        </div>
         <input id="budget" type="range" min="1" max="${maxBudget}" step="0.5" value="${state.budget}">
-        <div class="budget-top">
-          <span class="small muted">Pick topics by</span>
-          <div class="seg" role="group" aria-label="Pick topics by">
-            <button type="button" data-value="frequency" aria-pressed="${!byMarks}">Times asked</button>
-            <button type="button" data-value="marks" aria-pressed="${byMarks}" ${hasMarks ? '' : 'disabled title="No marks found in the papers"'}>Marks</button>
-          </div>
+        <div class="budget-scale" aria-hidden="true"><span>1 h</span><span>${hrs(maxBudget)} · everything takes ${hrs(allHours)}</span></div>
+      </div>
+      <div class="budget-mode">
+        <span>Prioritise by</span>
+        <div class="seg" role="group" aria-label="Prioritise by">
+          <button type="button" data-value="frequency" aria-pressed="${!byMarks}">Times asked</button>
+          <button type="button" data-value="marks" aria-pressed="${byMarks}" ${hasMarks ? '' : 'disabled title="No marks found in the papers"'}>Marks</button>
         </div>
       </div>
     </section>
-    <section class="card">
-      <div class="card-head"><h2>Your list</h2></div>
-      <div class="plan-sum">
-        <span><b>${plural(a.chosen.length, 'topic')}</b></span>
-        <span><b>${hrs(a.hours)}</b> of ${hrs(state.budget)}</span>
-        <span>covers <b>${Math.round((100 * a.value) / total)}%</b> of ${unitWord}</span>
-      </div>
-      <ul class="checklist">${chosen.map((k) => {
-        const d = r.topic.get(k);
-        return `<li class="${state.done.has(k) ? 'done' : ''}"><input type="checkbox" data-done="${esc(k)}" ${state.done.has(k) ? 'checked' : ''} aria-label="Mark ${esc(d.display)} as revised">
-          <span class="t"><span>${esc(d.display)}</span><small>Asked ${d.frequency}× · ${d.years.length} of ${r.years.length} papers</small></span>
-          <span class="h">${hrs(d.studyHours)}</span></li>`;
-      }).join('') || '<li><span></span><span class="t muted">Nothing fits in this time. Add hours or shorten topics below.</span><span></span></li>'}</ul>
-      ${a.value > g.value + 1e-9 ? `<p class="compare">Picking the most-asked topics first would only cover ${Math.round((100 * g.value) / total)}% in the same time. This list is chosen with 0/1 knapsack, so long topics don't crowd out several shorter ones.</p>` : ''}
-    </section>
+
+    <div class="grid plan-grid">
+      <section class="card">
+        <header class="card-head"><div><h2>Your revision list</h2><p>${plural(a.chosen.length, 'topic')} · ${hrs(a.hours)} of ${hrs(state.budget)}</p></div></header>
+        <div class="meter" ${`data-tip="${esc(`${hrs(a.hours)} planned of ${hrs(state.budget)}`)}" tabindex="0"`}><span style="width:${used * 100}%"></span></div>
+        <ul class="checklist">${chosen.map((k) => {
+          const d = r.topic.get(k);
+          return `<li class="${state.done.has(k) ? 'done' : ''}"><label>
+            <input type="checkbox" data-done="${esc(k)}" ${state.done.has(k) ? 'checked' : ''}>
+            <span class="t"><span class="dot" style="background:${unitVar(d.unit)}" aria-hidden="true"></span><span class="nm">${esc(d.display)}</span>
+              <small>Asked ${d.frequency}× · ${d.years.length} of ${r.years.length} papers</small></span>
+            <span class="h">${hrs(d.studyHours)}</span></label></li>`;
+        }).join('') || '<li class="none">Nothing fits in this time. Add hours or shorten topics below.</li>'}</ul>
+      </section>
+
+      <section class="card">
+        <header class="card-head"><div><h2>Coverage</h2><p>Share of all ${unitWord} the list covers.</p></div></header>
+        <div class="big-number">${Math.round((100 * a.value) / total)}<span>%</span></div>
+        ${compareBars([
+          { label: 'This list', value: a.value / total, note: '0/1 knapsack: best total for the hours' },
+          { label: 'Most asked first', value: g.value / total, muted: true, note: 'Greedy: take the top topic until time runs out' },
+        ])}
+        <p class="note">${a.value > g.value + 1e-9
+          ? `Taking the most-asked topics first covers ${Math.round((100 * g.value) / total)}% in the same time. This list uses 0/1 knapsack, so one long topic doesn't crowd out several shorter ones.`
+          : 'Here the most-asked-first order happens to be just as good.'}</p>
+      </section>
+    </div>
+
     <section class="card">
       <details ${state.hoursOpen ? 'open' : ''}>
         <summary>Set how long each topic takes you</summary>
-        <p class="small muted" style="margin:8px 0 0">Papers don't say how long a topic takes. Topics start at ${hrs(state.defaultHours)} unless the text sets <code>@hours</code>.</p>
+        <p class="note">Papers don't say how long a topic takes. Every topic starts at ${hrs(state.defaultHours)} unless the text sets <code>@hours</code>.</p>
         <div class="hours-list">${r.ranked.map((d) => `
           <div class="hours-row"><span>${esc(d.display)}</span>
             <span class="stepper"><button type="button" data-step="-0.5" data-key="${esc(d.key)}" aria-label="Less time for ${esc(d.display)}">−</button><span>${hrs(d.studyHours)}</span><button type="button" data-step="0.5" data-key="${esc(d.key)}" aria-label="More time for ${esc(d.display)}">+</button></span></div>`).join('')}
@@ -350,87 +430,43 @@ function plan(el) {
   el.querySelector('details').addEventListener('toggle', (e) => { state.hoursOpen = e.target.open; });
 }
 
-// ---------- All topics ----------
-
-function topics(el) {
-  el.innerHTML = `
-    <section class="card">
-      <div class="toolbar">
-        <input type="search" id="q" placeholder="Search topics" value="${esc(state.query)}" aria-label="Search topics">
-        <select id="sort" aria-label="Sort topics">
-          <option value="count" ${state.sort === 'count' ? 'selected' : ''}>Most asked</option>
-          <option value="az" ${state.sort === 'az' ? 'selected' : ''}>A to Z</option>
-          <option value="unit" ${state.sort === 'unit' ? 'selected' : ''}>By unit</option>
-        </select>
-      </div>
-      <ul class="topics" id="topic-list"></ul>
-    </section>`;
-  const draw = () => {
-    const q = state.query.toLowerCase();
-    let list = state.sort === 'az' ? result.table : state.sort === 'unit'
-      ? [...result.ranked].sort((a, b) => (a.unit || 99) - (b.unit || 99))
-      : result.ranked;
-    if (q) list = list.filter((d) => d.display.toLowerCase().includes(q) || [...d.variants.keys()].some((v) => v.toLowerCase().includes(q)));
-    el.querySelector('#topic-list').innerHTML = list.map((d) => {
-      const other = [...d.variants.keys()].filter((v) => v !== d.display);
-      return `<li class="topic"><span class="t">${esc(d.display)}</span>
-        <span class="c">${d.frequency}×${d.marks ? `<small>${num(d.marks)} marks</small>` : ''}</span>
-        <span class="d">${d.unit ? `<span class="chip unit">Unit ${d.unit}</span>` : ''}${d.years.map((y) => `<span class="chip">${esc(y)}</span>`).join('')}
-          ${other.length ? `<span>also written as ${other.map(esc).join(', ')}</span>` : ''}</span></li>`;
-    }).join('') || '<li class="empty">No topic matches that search.</li>';
-  };
-  el.querySelector('#q').addEventListener('input', (e) => { state.query = e.target.value; draw(); });
-  el.querySelector('#sort').addEventListener('change', (e) => { state.sort = e.target.value; draw(); });
-  draw();
-}
-
-// ---------- Groups ----------
-
-function groups(el) {
-  const r = result;
-  el.innerHTML = `
-    <p class="small muted" style="margin:0 0 12px">Topics asked in the same question are grouped together. Revise a group in one sitting, in the order shown. The order starts at the group's most-asked topic and follows the strongest links.</p>
-    <div class="groups">${r.clusters.map((c, i) => {
-      const p = r.prim[i];
-      const via = new Map(p.edges.map((e) => [e.v, e]));
-      return `<section class="card group" style="--c:${clusterColor(i)}">
-        <h3>Group ${i + 1} <span>${plural(c.keys.length, 'topic')} · asked ${c.frequency}×</span></h3>
-        ${c.keys.length === 1
-          ? `<p class="solo">${esc(name(c.keys[0]))} is never asked with another topic. Revise it on its own.</p>`
-          : `<ol class="route">${p.order.map((k) => {
-            const e = via.get(k);
-            return `<li><span>${esc(name(k))}${e ? ` <small>with ${esc(name(e.u))} ${e.count}×</small>` : ''}</span></li>`;
-          }).join('')}</ol>`}
-      </section>`;
-    }).join('')}</div>`;
-}
-
-// ---------- Connections ----------
+// ---------- Topic links ----------
 
 function links(el) {
-  const opts = (sel) => result.ranked.map((d) => `<option value="${esc(d.key)}" ${d.key === sel ? 'selected' : ''}>${esc(d.display)}</option>`).join('');
+  const r = result;
+  const opts = (sel) => r.ranked.map((d) => `<option value="${esc(d.key)}" ${d.key === sel ? 'selected' : ''}>${esc(d.display)}</option>`).join('');
+  const solo = r.clusters.filter((c) => c.keys.length === 1);
+  const linked = r.clusters.map((c, i) => ({ c, i })).filter(({ c }) => c.keys.length > 1);
   el.innerHTML = `
-    <section class="card">
-      <div class="card-head"><h2>Topic map</h2><p>Each line joins two topics asked in the same question. Thicker means more often. Colours match the groups.</p></div>
+    ${card('Topic map', 'Lines join topics asked in the same question; thicker means more often. Circle size shows how often a topic is asked, colour shows its group.', `
       <div class="graph-box" id="graph"></div>
-      ${(() => { const solo = result.clusters.filter((c) => c.keys.length === 1); return solo.length ? `<p class="small muted" style="margin:10px 0 0">Not shown, never asked with another topic: ${solo.map((c) => esc(name(c.keys[0]))).join(', ')}.</p>` : ''; })()}
-      <div class="legend"><span><i style="background:var(--accent)"></i>Strongest links (spanning tree)</span><span><i style="background:var(--path)"></i>Path below</span></div>
-    </section>
-    <div class="grid-2" style="margin-top:12px">
-      <section class="card">
-        <h3>Asked alongside</h3>
-        <div class="fields"><label class="field">Topic<select id="bfs-from">${opts(state.bfsFrom)}</select></label></div>
-        <div id="bfs"></div>
-      </section>
-      <section class="card">
-        <h3>From a topic you know to one you don't</h3>
+      <ul class="legend"><li><i class="line" style="background:var(--ink)"></i>Strongest links</li><li><i class="line" style="background:var(--path)"></i>Path chosen below</li></ul>
+      ${solo.length ? `<p class="note">Never asked with another topic: ${solo.map((c) => esc(name(c.keys[0]))).join(', ')}.</p>` : ''}`)}
+
+    <div class="grid">
+      ${card('From what you know to what you don’t', 'The shortest chain of topics that are asked together.', `
         <div class="fields two">
           <label class="field">I know<select id="dj-from">${opts(state.djFrom)}</select></label>
           <label class="field">I want to learn<select id="dj-to">${opts(state.djTo)}</select></label>
         </div>
-        <div id="dj"></div>
-      </section>
-    </div>`;
+        <div id="dj"></div>`)}
+      ${card('Asked alongside', 'Topics that share questions with this one.', `
+        <div class="fields"><label class="field">Topic<select id="bfs-from">${opts(state.bfsFrom)}</select></label></div>
+        <div id="bfs"></div>`)}
+    </div>
+
+    ${linked.length ? card('Revise in groups', 'Topics in a group are asked together. Revise each group in one sitting, in this order.', `
+      <div class="groups">${linked.map(({ c, i }) => {
+        const p = r.prim[i];
+        const via = new Map(p.edges.map((e) => [e.v, e]));
+        return `<div class="group" style="--gc:${clusterColor(i)}">
+          <h3><span class="dot" style="background:var(--gc)"></span>Group ${i + 1}<span class="muted">${plural(c.keys.length, 'topic')} · ${c.frequency}×</span></h3>
+          <ol class="route">${p.order.map((k) => {
+            const e = via.get(k);
+            return `<li><span>${esc(name(k))}${e ? ` <small>with ${esc(name(e.u))} ${e.count}×</small>` : ''}</span></li>`;
+          }).join('')}</ol></div>`;
+      }).join('')}</div>`) : ''}`;
+
   el.querySelector('#bfs-from').addEventListener('change', (e) => { state.bfsFrom = e.target.value; drawBFS(); });
   el.querySelector('#dj-from').addEventListener('change', (e) => { state.djFrom = e.target.value; drawPath(); });
   el.querySelector('#dj-to').addEventListener('change', (e) => { state.djTo = e.target.value; drawPath(); });
@@ -446,31 +482,32 @@ function drawBFS() {
     levels.get(v.level).push(v.key);
   }
   $('bfs').innerHTML = levels.size <= 1
-    ? '<p class="small muted">Never asked with another topic.</p>'
+    ? '<p class="note">Never asked with another topic.</p>'
     : `<div class="levels">${[...levels].slice(1).map(([lvl, ks]) => `
         <div><h4>${lvl === 1 ? 'In the same question' : `${lvl} steps away`}</h4>
-        <div class="chips">${ks.map((k) => `<span class="chip">${esc(name(k))}${lvl === 1 ? ` · ${g.count(state.bfsFrom, k)}×` : ''}</span>`).join('')}</div></div>`).join('')}</div>`;
+        <div class="chips">${ks.map((k) => `<span class="chip">${esc(name(k))}${lvl === 1 ? ` <b>${g.count(state.bfsFrom, k)}×</b>` : ''}</span>`).join('')}</div></div>`).join('')}</div>`;
 }
 
 function drawPath() {
   const r = result;
   let path = null;
   let html;
-  if (state.djFrom === state.djTo) html = '<p class="small muted">Pick two different topics.</p>';
+  if (state.djFrom === state.djTo) html = '<p class="note">Pick two different topics.</p>';
   else {
     path = r.graph.shortestPath(state.djFrom, state.djTo);
-    if (!path) html = `<p class="small muted">These two are never linked through shared questions. ${esc(name(state.djTo))} is in a different group, so revise it separately.</p>`;
+    if (!path) html = `<p class="note">These two are never linked through shared questions. ${esc(name(state.djTo))} is in a different group, so revise it on its own.</p>`;
     else {
       const mids = path.path.slice(1, -1);
       html = `<ol class="path">${path.path.map((k, i) => `<li class="${i && i < path.path.length - 1 ? 'mid' : ''}">${esc(name(k))}</li>`).join('')}</ol>
-        <p class="small muted" style="margin:10px 0 0">${mids.length ? `Cover ${mids.map((k) => esc(name(k))).join(', ')} on the way. ${mids.length > 1 ? 'They link' : 'It links'} the two most strongly.` : 'These are asked together directly.'}</p>`;
+        <p class="note">${mids.length ? `Cover ${mids.map((k) => esc(name(k))).join(', ')} on the way.` : 'These are asked together directly.'}</p>`;
     }
   }
   $('dj').innerHTML = html;
-  $('graph').innerHTML = graphSVG(r.graph, r.clusters, r.topic, { highlight: path ? path.path : [], mst: r.kruskal.edges });
+  const box = $('graph');
+  box.innerHTML = graphSVG(r.graph, r.clusters, r.topic, { highlight: path ? path.path : [], mst: r.kruskal.edges, width: box.clientWidth || 960 });
 }
 
-// ---------- How it works ----------
+// ---------- Method ----------
 
 const STEPS = [
   ['Read the papers', 'Split into questions, find topics', null, 'parse'],
@@ -479,12 +516,10 @@ const STEPS = [
   ['A to Z list', 'In-order traversal', 'O(n)', 'inorder'],
   ['Most asked', 'Max-heap, top N', 'O(n + N log n)', 'topN'],
   ['Full ranking', 'Heap sort', 'O(n log n)', 'heapSort'],
-  ['Link topics', 'Weighted adjacency list, weight 1/count', 'O(V + E)', 'graph'],
+  ['Link topics', 'Weighted adjacency list', 'O(V + E)', 'graph'],
   ['Find groups', 'DFS connected components', 'O(V + E)', 'components'],
   ['Strongest links', 'Kruskal with union-find', 'O(E log E)', 'kruskal'],
   ['Revision order', 'Prim from the most-asked topic', 'O(E log V)', 'prim'],
-  ['Asked alongside', 'BFS', 'O(V + E)', null],
-  ['Path between topics', 'Dijkstra', 'O((V + E) log V)', null],
   ['Study plan', '0/1 knapsack', 'O(nW)', 'knapsack'],
   ['Paper overlap', 'LCS of topic sequences', 'O(mn)', 'paperLCS'],
 ];
@@ -494,71 +529,67 @@ function how(el) {
   const t = r.tree;
   const n = t.size;
   const rot = t.rotations;
-  const ms = (k) => (k && r.timings[k] !== undefined ? `${r.timings[k].toFixed(2)} ms` : '');
   const total = Object.values(r.timings).reduce((s, x) => s + x, 0);
+  const maxMs = Math.max(0.001, ...STEPS.map((s) => r.timings[s[3]] ?? 0));
   const merges = r.normaliser.merges;
+  const best = n ? Math.ceil(Math.log2(n + 1)) : 0;
+  const hMax = Math.max(1, t.height, r.bstHeight);
   el.innerHTML = `
-    <section class="card">
-      <div class="card-head"><h2>Settings</h2></div>
-      <div class="setting">
-        <label for="threshold">Spelling match <output>${state.threshold.toFixed(2)}</output></label>
-        <input id="threshold" type="range" min="0.6" max="1" step="0.01" value="${state.threshold}">
-        <p>Two names count as one topic when LCS(a, b) / longer length reaches this value. Lower merges more.</p>
-      </div>
-      <div class="setting">
-        <label>Link topics asked in the same</label>
-        <div class="seg" role="group" aria-label="Link topics asked in the same">
-          <button type="button" data-scope="question" aria-pressed="${state.edgeScope === 'question'}">Question</button>
-          <button type="button" data-scope="unit" aria-pressed="${state.edgeScope === 'unit'}">Unit of a paper</button>
+    <div class="grid">
+      ${card('Settings', '', `
+        <div class="setting">
+          <label for="threshold">Spelling match <output>${state.threshold.toFixed(2)}</output></label>
+          <input id="threshold" type="range" min="0.6" max="1" step="0.01" value="${state.threshold}">
+          <p class="note">Two names count as one topic when LCS(a, b) / longer length reaches this value. Lower merges more.</p>
         </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2>Pipeline</h2><p>Every step and the data structure behind it. Whole run: ${total.toFixed(1)} ms.</p></div>
-      <ol class="steps">${STEPS.map(([what, algo, big, key]) => `
-        <li><span class="what">${what}</span><span class="how">${algo}${big ? ` <code>${big}</code>` : ''}</span><span class="ms">${ms(key)}</span></li>`).join('')}
-      </ol>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2>AVL tree</h2><p>Topics stored by name. Numbers are how often each was asked.</p></div>
-      <div class="kv">
-        <div><b>${n}</b>topics</div>
-        <div><b>${t.height}</b>AVL height</div>
-        <div><b>${r.bstHeight}</b>plain BST height</div>
-        <div><b>${n ? Math.ceil(Math.log2(n + 1)) : 0}</b>best possible</div>
-        <div><b>${rot.LL + rot.RR + rot.LR + rot.RL}</b>rotations (LL ${rot.LL}, RR ${rot.RR}, LR ${rot.LR}, RL ${rot.RL})</div>
-      </div>
-      <div class="scroll-x">${treeSVG(t.root, (node) => node.data.display)}</div>
-      <details style="margin-top:10px"><summary>Traversals</summary>
-        <p class="small"><strong>Pre-order</strong> (used to save the tree): ${t.preOrder().map((x) => esc(x.data.display)).join(', ')}</p>
-        <p class="small"><strong>Post-order</strong> (safe order to free it): ${t.postOrder().map((x) => esc(x.data.display)).join(', ')}</p>
-      </details>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2>Merged spellings</h2><p>Names joined by LCS similarity or by an <code>@alias</code> line.</p></div>
-      ${merges.length ? `<div class="scroll-x"><table class="list"><thead><tr><th>Written as</th><th>Counted as</th><th class="num">Match</th></tr></thead><tbody>${
-        merges.map((m) => `<tr><td>${esc(m.raw)}</td><td>${esc(name(m.key))}</td><td class="num">${m.via === 'alias' ? 'alias' : m.score.toFixed(2)}</td></tr>`).join('')
-      }</tbody></table></div>` : '<p class="small muted">Nothing needed merging.</p>'}
-    </section>
-
-    <div class="grid-2" style="margin-top:12px">
-      <section class="card">
-        <div class="card-head"><h2>Units asked together</h2><p>Fixed 5 × 5 adjacency matrix.</p></div>
-        <div class="scroll-x"><table class="grid"><thead><tr><th></th>${r.unitMatrix.map((_, i) => `<th>U${i + 1}</th>`).join('')}</tr></thead><tbody>${
-          r.unitMatrix.map((row, i) => `<tr><th>U${i + 1}</th>${row.map((v) => `<td style="background:color-mix(in srgb, var(--accent) ${Math.min(60, v * 6)}%, transparent)">${v}</td>`).join('')}</tr>`).join('')
-        }</tbody></table></div>
-      </section>
-      <section class="card">
-        <div class="card-head"><h2>Paper overlap</h2><p>How much of one paper's topic order repeats in another.</p></div>
-        ${r.years.length < 2 ? '<p class="small muted">Needs two or more papers.</p>' : `<div class="scroll-x"><table class="grid"><thead><tr><th></th>${r.years.map((y) => `<th>${esc(y)}</th>`).join('')}</tr></thead><tbody>${
-          r.paperSimilarity.map((row, i) => `<tr><th>${esc(r.years[i])}</th>${row.map((v, j) => (i === j ? '<td>–</td>' : `<td style="background:color-mix(in srgb, var(--accent) ${Math.round(v * 60)}%, transparent)">${Math.round(v * 100)}%</td>`)).join('')}</tr>`).join('')
-        }</tbody></table></div>`}
-      </section>
+        <div class="setting">
+          <span class="setting-label">Link topics asked in the same</span>
+          <div class="seg" role="group" aria-label="Link topics asked in the same">
+            <button type="button" data-scope="question" aria-pressed="${state.edgeScope === 'question'}">Question</button>
+            <button type="button" data-scope="unit" aria-pressed="${state.edgeScope === 'unit'}">Unit of a paper</button>
+          </div>
+        </div>`)}
+      ${card('Tree height', 'Lower is faster to search. Same topics, inserted in the same order.', `
+        <div class="compare-bars">
+          ${[['AVL tree', t.height], ['Plain BST', r.bstHeight], ['Best possible', best]].map(([l, v], i) => `
+          <div class="cmp-row" data-tip="${esc(`${l}: height ${v}`)}" tabindex="0"><span class="cmp-label">${l}</span>
+            <span class="cmp-track"><span class="cmp-fill${i ? ' muted-fill' : ''}" style="width:${(100 * v) / hMax}%"></span></span><span class="cmp-value">${v}</span></div>`).join('')}
+        </div>
+        <p class="note">${plural(rot.LL + rot.RR + rot.LR + rot.RL, 'rotation')} kept the AVL tree balanced (LL ${rot.LL}, RR ${rot.RR}, LR ${rot.LR}, RL ${rot.RL}).</p>`)}
     </div>
-    <p class="small muted" style="margin-top:16px">Design notes and the reasons behind each choice are in the <a href="https://github.com/utk042/DSA_PBL/blob/HEAD/REPORT.md">project report</a>.</p>`;
+
+    ${card('Pipeline', `Each step and the structure behind it. Whole run took ${total.toFixed(1)} ms.`, `
+      <ol class="steps">${STEPS.map(([what, algo, big, key]) => {
+        const ms = r.timings[key] ?? 0;
+        return `<li><span class="what">${what}</span><span class="how">${algo}${big ? ` <code>${big}</code>` : ''}</span>
+          <span class="ms"><span class="ms-bar"><span style="width:${(100 * ms) / maxMs}%"></span></span>${ms.toFixed(2)} ms</span></li>`;
+      }).join('')}</ol>`)}
+
+    ${card('AVL tree', 'Topics stored by name; the number is how often each was asked.', `
+      <div class="scroll-x">${treeSVG(t.root, (node) => node.data.display)}</div>
+      <details><summary>Traversals</summary>
+        <p class="note"><strong>Pre-order</strong> (used to save the tree): ${t.preOrder().map((x) => esc(x.data.display)).join(', ')}</p>
+        <p class="note"><strong>Post-order</strong> (safe order to free it): ${t.postOrder().map((x) => esc(x.data.display)).join(', ')}</p>
+      </details>`)}
+
+    <div class="grid">
+      ${card('Units asked together', 'Fixed 5 × 5 adjacency matrix.', `<div class="scroll-x"><table class="matrix"><thead><tr><th></th>${r.unitMatrix.map((_, i) => `<th>U${i + 1}</th>`).join('')}</tr></thead><tbody>${
+        r.unitMatrix.map((row, i) => `<tr><th>U${i + 1}</th>${row.map((v) => `<td><span class="cell h${v ? Math.min(5, Math.ceil(v / 2)) : 0}">${v}</span></td>`).join('')}</tr>`).join('')
+      }</tbody></table></div>`)}
+      ${card('Paper overlap', 'How much of one paper’s topic order repeats in another (LCS).', r.years.length < 2 ? '<p class="note">Needs two or more papers.</p>' : `<div class="scroll-x"><table class="matrix"><thead><tr><th></th>${r.years.map((y) => `<th>${esc(y)}</th>`).join('')}</tr></thead><tbody>${
+        r.paperSimilarity.map((row, i) => `<tr><th>${esc(r.years[i])}</th>${row.map((v, j) => (i === j ? '<td><span class="cell h0">–</span></td>' : `<td><span class="cell h${Math.min(5, Math.ceil(v * 5))}">${Math.round(v * 100)}</span></td>`)).join('')}</tr>`).join('')
+      }</tbody></table></div>`)}
+    </div>
+
+    ${card('Merged spellings', 'Names joined by LCS similarity or an <code>@alias</code> line.', merges.length ? `<div class="table-wrap"><table class="topics"><thead><tr><th>Written as</th><th>Counted as</th><th class="num">Match</th></tr></thead><tbody>${
+      merges.map((m) => `<tr><td>${esc(m.raw)}</td><td>${esc(name(m.key))}</td><td class="num">${m.via === 'alias' ? 'alias' : m.score.toFixed(2)}</td></tr>`).join('')
+    }</tbody></table></div>` : '<p class="note">Nothing needed merging.</p>')}
+    <p class="note">The reasons behind each choice are in the <a href="https://github.com/utk042/DSA_PBL/blob/HEAD/REPORT.md">project report</a>.</p>`;
+
+  // Wide trees scroll sideways; start with the root in view.
+  const tw = el.querySelector('.scroll-x');
+  const rootNode = tw.querySelector('.root circle');
+  if (rootNode) tw.scrollLeft = rootNode.cx.baseVal.value - tw.clientWidth / 2;
 
   const th = el.querySelector('#threshold');
   th.addEventListener('input', () => { th.previousElementSibling.querySelector('output').textContent = Number(th.value).toFixed(2); });
@@ -566,4 +597,4 @@ function how(el) {
   el.querySelectorAll('[data-scope]').forEach((b) => b.addEventListener('click', () => { state.edgeScope = b.dataset.scope; run(); }));
 }
 
-loadPreset('five');
+run();

@@ -1,4 +1,4 @@
-// Demo inputs. Both are made up to exercise the pipeline;
+// Test fixtures. Both are made up to exercise the pipeline;
 // they are not real university question papers.
 
 export const WORKED_EXAMPLE = `// Section 7 of the report: six topics across three years.
@@ -170,7 +170,4 @@ Q9 (10): N-Queens, Hamiltonian Cycles
 Q10 (10): Traveling Salesman, Branch and Bound
 `;
 
-export const PRESETS = [
-  { id: 'five', label: 'Five-year sample (2020–2024)', text: FIVE_YEARS, budgetHours: 10 },
-  { id: 'worked', label: 'Report worked example (§7)', text: WORKED_EXAMPLE, budgetHours: 6 },
-];
+
