@@ -23,7 +23,7 @@ Open the site, then drop in your papers. It reads:
 
 Use one file per paper. The year is taken from the file name or the top of the paper, and you can change it after upload.
 Topics are found by matching question text against the DSA-II topic list in `public/js/core/vocabulary.js`.
-To check or fix what was read, open **Check or edit the extracted text**.
+To check or fix what was read, open **Type or edit papers as text**.
 
 Everything runs in the browser. Files are never uploaded anywhere.
 
@@ -67,4 +67,4 @@ Import the repo at <https://vercel.com/new> and keep the defaults.
 Each push to the production branch redeploys the site.
 
 pdf.js (Apache-2.0) is included in `public/vendor/pdfjs`.
-The sample papers in `public/samples` and the sample data in the app are made up. They are not real exam papers.
+The app ships with no data: everything shown comes from the papers you add. The test fixtures in `tests/fixtures` are made up and are not real exam papers.

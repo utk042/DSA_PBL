@@ -5,94 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PYQ Topic Analyser</title>
   <meta name="description" content="Upload previous years' question papers and see which topics are asked most, which are asked together, and what to revise in the time you have.">
-  <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#111214" media="(prefers-color-scheme: dark)">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f62d8'/%3E%3Cpath d='M9 23V15M16 23V9M23 23v-5' stroke='white' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1b19'/%3E%3Cpath d='M9 23V16M16 23V9M23 23v-4' stroke='%23f6f5f1' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script>
     try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
   </script>
 </head>
 <body>
-  <header class="bar">
-    <div class="wrap bar-in">
+  <header class="top">
+    <div class="wrap top-in">
       <a class="brand" href="./">
-        <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M9 23V15M16 23V9M23 23v-5" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>
-        PYQ Topic Analyser
+        <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--ink)"/><path d="M9 23V16M16 23V9M23 23v-4" stroke="var(--bg)" stroke-width="3.4" stroke-linecap="round"/></svg>
+        <span>PYQ Analyser</span>
       </a>
-      <div class="bar-actions">
+      <div class="top-actions">
         <button class="icon-btn" id="theme" type="button" aria-label="Switch colour theme">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
         <a class="icon-btn" href="https://github.com/utk042/DSA_PBL" aria-label="Source code on GitHub">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.2-3.1-.1-.4-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.7 1.6.2 2.8.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.2-3.1-.1-.4-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.7 1.6.2 2.8.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
         </a>
       </div>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="intro">
-      <h1>See what past papers keep asking</h1>
-      <p>Upload previous years' question papers. You get the most-asked topics, the topics that are asked together, and a revision list that fits the hours you have.</p>
+    <section class="hero" id="hero">
+      <h1>Find the topics your exam keeps asking.</h1>
+      <p>Add a few years of question papers. You'll see the most-asked topics, how they repeat across papers, and a revision list that fits the hours you have.</p>
     </section>
 
-    <section class="card" aria-labelledby="upload-title">
-      <h2 id="upload-title" class="sr-only">Add papers</h2>
+    <section class="upload" aria-labelledby="upload-title">
+      <h2 id="upload-title" class="sr-only">Your papers</h2>
       <label id="drop" class="drop" for="file">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
-        <p><strong>Drop papers here or tap to choose</strong></p>
-        <p class="hint">PDF, Word (.docx, .doc), PowerPoint (.pptx, .ppt) or .txt. One file per paper.</p>
+        <span class="drop-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        </span>
+        <span class="drop-text">
+          <strong>Drop question papers here</strong>
+          <span>or <u>choose files</u> · PDF, Word, PowerPoint or .txt · one file per paper</span>
+        </span>
         <input id="file" type="file" multiple class="sr-only">
       </label>
 
       <ul id="files" class="files" aria-live="polite"></ul>
 
-      <div class="alt">
-        <span>No papers to hand?</span>
-        <button class="btn small" type="button" data-preset="five">Use sample data</button>
-        <button class="btn small" type="button" data-preset="worked">Report example</button>
-        <span class="sep" aria-hidden="true"></span>
-        <span>Sample files to upload:</span>
-        <a href="samples/paper-2022.pptx" download>2022.pptx</a>
-        <a href="samples/paper-2023.pdf" download>2023.pdf</a>
-        <a href="samples/paper-2024.docx" download>2024.docx</a>
-      </div>
-
       <details class="editor" id="editor">
-        <summary>Check or edit the extracted text</summary>
-        <pre>=== 2023 ===                       a paper
+        <summary>Type or edit papers as text</summary>
+        <div class="editor-body">
+          <pre class="syntax">=== 2023 ===                       a paper (year or any label)
 [Unit 2]                           unit for the questions below
 Q4 (10): Kruskal, Prim             question, marks, topics
 @hours AVL Tree = 3                optional: study hours
 @alias BST = Binary Search Tree    optional: short forms</pre>
-        <textarea id="text" spellcheck="false" aria-label="Papers as text"></textarea>
+          <textarea id="text" spellcheck="false" aria-label="Papers as text" placeholder="=== 2024 ===&#10;Q1 (10): AVL Tree, Binary Search Tree"></textarea>
+        </div>
       </details>
       <div id="notice"></div>
+      <p class="privacy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Files are read in your browser. Nothing is uploaded.
+      </p>
     </section>
 
-    <div id="results">
-      <div class="tabs-bar">
-        <div class="tabs" role="tablist" aria-label="Results">
+    <div id="results" hidden>
+      <nav class="tabs-bar" aria-label="Results">
+        <div class="tabs" role="tablist">
           <button class="tab" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true">Overview</button>
           <button class="tab" role="tab" id="tab-plan" aria-controls="plan" aria-selected="false" tabindex="-1">Study plan</button>
-          <button class="tab" role="tab" id="tab-topics" aria-controls="topics" aria-selected="false" tabindex="-1">All topics</button>
-          <button class="tab" role="tab" id="tab-groups" aria-controls="groups" aria-selected="false" tabindex="-1">Groups</button>
-          <button class="tab" role="tab" id="tab-links" aria-controls="links" aria-selected="false" tabindex="-1">Connections</button>
-          <button class="tab" role="tab" id="tab-how" aria-controls="how" aria-selected="false" tabindex="-1">How it works</button>
+          <button class="tab" role="tab" id="tab-links" aria-controls="links" aria-selected="false" tabindex="-1">Topic links</button>
+          <button class="tab" role="tab" id="tab-how" aria-controls="how" aria-selected="false" tabindex="-1">Method</button>
         </div>
-      </div>
+      </nav>
       <section class="panel" role="tabpanel" id="overview" aria-labelledby="tab-overview"></section>
       <section class="panel" role="tabpanel" id="plan" aria-labelledby="tab-plan" hidden></section>
-      <section class="panel" role="tabpanel" id="topics" aria-labelledby="tab-topics" hidden></section>
-      <section class="panel" role="tabpanel" id="groups" aria-labelledby="tab-groups" hidden></section>
       <section class="panel" role="tabpanel" id="links" aria-labelledby="tab-links" hidden></section>
       <section class="panel" role="tabpanel" id="how" aria-labelledby="tab-how" hidden></section>
     </div>
   </main>
 
   <footer class="wrap foot">
-    Files are read in your browser and never uploaded. DSA-II project by Utkarsh Raj Shukla (2501330100398), B.Tech CSE-F, guided by Mr. Shamshad Ali.
+    DSA-II project by Utkarsh Raj Shukla (2501330100398), B.Tech CSE-F, guided by Mr. Shamshad Ali.
   </footer>
 
   <script type="module" src="js/app.js"></script>

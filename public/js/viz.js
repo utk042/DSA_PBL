@@ -2,8 +2,8 @@
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export const CLUSTER_COLORS = ['#2a78d6', '#d9622b', '#1f9e78', '#b8467c', '#7a5bd1', '#b58a0f', '#3a9fb0', '#c4433a'];
-export const clusterColor = (i) => (i < CLUSTER_COLORS.length ? CLUSTER_COLORS[i] : 'var(--muted)');
+// Fixed categorical order (CSS --c1..--c8); groups past the eighth fold to grey.
+export const clusterColor = (i) => (i < 8 ? `var(--c${i + 1})` : 'var(--muted)');
 
 const short = (s, n = 14) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -31,7 +31,7 @@ export function treeSVG(root, label = (n) => n.key) {
   const lines = nodes.flatMap((p) => [p.l, p.r].filter(Boolean).map((c) =>
     `<line x1="${px(p)}" y1="${py(p)}" x2="${px(c)}" y2="${py(c)}" class="edge"/>`)).join('');
   const circles = nodes.map((p) => `
-    <g class="tnode"><title>${esc(label(p.n))}: asked ${p.n.data.frequency}×, height ${p.n.height}</title>
+    <g class="tnode${p.depth ? '' : ' root'}"><title>${esc(label(p.n))}: asked ${p.n.data.frequency}×, height ${p.n.height}</title>
       <circle cx="${px(p)}" cy="${py(p)}" r="15"/>
       <text x="${px(p)}" y="${py(p) + 4}" class="freq">${p.n.data.frequency}</text>
       <text x="${px(p)}" y="${py(p) + 30}" class="lbl">${esc(short(label(p.n), 11))}</text>
@@ -51,7 +51,7 @@ export function layout(graph, clusters, W) {
   let rowH = 0;
   for (const c of clusters) {
     const n = c.keys.length;
-    const bw = Math.min(W, n === 1 ? 170 : Math.max(320, 125 * Math.sqrt(n) * 1.5));
+    const bw = Math.min(W, n === 1 ? 170 : Math.max(Math.min(320, W), 125 * Math.sqrt(n) * 1.5));
     const bh = n === 1 ? 90 : Math.max(140, 100 * Math.sqrt(n));
     if (x + bw > W) { x = 0; y += rowH; rowH = 0; }
     boxes.push({ c, x, y, w: bw, h: bh });
@@ -120,8 +120,8 @@ function placeCluster(graph, { c, x, y, w, h }, pos) {
   for (const [kk, p] of local) pos.set(kk, p);
 }
 
-export function graphSVG(graph, clusters, topic, { highlight = [], mst = [] } = {}) {
-  const W = 960;
+export function graphSVG(graph, clusters, topic, { highlight = [], mst = [], width = 960 } = {}) {
+  const W = Math.max(340, Math.min(1100, Math.round(width)));
   const linked = clusters.filter((c) => c.keys.length > 1);
   const { pos, H } = layout(graph, linked, W);
   const clusterOf = new Map();
@@ -146,5 +146,5 @@ export function graphSVG(graph, clusters, topic, { highlight = [], mst = [] } = 
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r.toFixed(1)}" style="fill:${clusterColor(clusterOf.get(k))}"/>
       <text x="${p.x.toFixed(1)}" y="${(p.y + r + 12).toFixed(1)}">${esc(short(d.display, 18))}</text></g>`;
   }).join('');
-  return `<svg class="graph-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Topic co-occurrence graph">${lines}${nodes}</svg>`;
+  return `<svg class="graph-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Topic co-occurrence graph">${lines}${nodes}</svg>`;
 }
