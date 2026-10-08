@@ -8,7 +8,7 @@ import { parse } from '../public/js/core/parser.js';
 import { analyse } from '../public/js/core/analyser.js';
 
 const file = (name) => {
-  const b = readFileSync(new URL(`../public/samples/${name}`, import.meta.url));
+  const b = readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
   return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
 };
 
