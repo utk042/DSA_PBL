@@ -267,3 +267,18 @@ table.list td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .setting p { margin: 0; color: var(--muted); font-size: 13px; }
 
 .foot { color: var(--muted); font-size: 13px; padding: 24px 16px 40px; }
+
+/* Project progress */
+.progress { height: 12px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--good); border-radius: 6px; }
+.progress-label { margin: 6px 0 16px; font-size: 14px; color: var(--muted); }
+.progress-label b { color: var(--ink); font-size: 18px; }
+.status-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.status-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.status-list li:last-child { border-bottom: 0; }
+.st { flex: none; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.st.done { background: var(--good-soft); color: var(--good); }
+.st.in-progress { background: var(--accent-soft); color: var(--accent); }
+.st.pending { background: var(--warn-soft); color: var(--warn); }
+.done-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.card h3 + p.small { margin-top: 0; }

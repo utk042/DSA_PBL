@@ -346,10 +346,11 @@ worse, and visibly so.
 
 **Working:** parser, AVL store with all four rotations, the three traversals,
 Max-Heap ranking with Top-N and Heap Sort, co-occurrence graph as a weighted adjacency
-list, BFS, DFS, connected components, Kruskal's MST.
+list, BFS, DFS, connected components, Kruskal's MST, Prim's MST, Dijkstra, the 0/1
+Knapsack allocator, the LCS normaliser, and upload of PDF, Word and PowerPoint papers.
 
-**Designed, implementation in progress:** Prim's variant, Dijkstra, the 0/1 Knapsack
-allocator, the LCS normaliser.
+**In progress:** revising the project objective, putting the report in the required
+format, and reading further research papers (see Section 9).
 
 **Known limitations:**
 
@@ -367,7 +368,84 @@ set ever outgrew memory.
 
 ---
 
-## 9. References
+## 9. Progress review
+
+**Overall progress: 60%**
+
+```
+[████████████░░░░░░░░] 60%
+```
+
+### 9.1 Feedback from the review
+
+| # | Feedback | Status |
+|---|---|---|
+| 1 | Focus more on DSA-II Unit 1 and Unit 2, and study the Unit 1 and Unit 2 topics in depth | Done |
+| 2 | Study Heap Sort, AVL Tree and BST in depth | Done |
+| 3 | Start the implementation | Done |
+| 4 | Read more research papers | In progress |
+| 5 | Change the objective of the project | Pending |
+| 6 | Write the report in the proper format | Pending |
+
+### 9.2 Methodology: incremental model
+
+The project was built with the **incremental model**. The pipeline in Section 2 was
+split into separate stages, and one stage was built and tested at a time before the next
+one was started.
+
+How it was applied:
+
+1. **Plan the increments.** Each stage of the pipeline became one increment, and each
+   increment adds one data structure or algorithm: parser, LCS normaliser, AVL store,
+   heap ranking, graph, clustering, MST routes, Dijkstra, Knapsack.
+2. **Build in order of dependency.** Month 1 covered stages 1 to 4, the tree layer.
+   Month 2 covered stages 5 to 9, the graph and DP layer. A later stage only uses the
+   output of earlier stages that already work. For example, the graph is built from
+   the AVL topic table.
+3. **Test each increment before moving on.** Every stage has unit tests. One test
+   checks that the AVL tree stays balanced on sorted input. Another compares the
+   Knapsack answer with a brute-force answer for every budget. A third checks that
+   the worked example in Section 7 is reproduced exactly.
+4. **Integrate and review.** After each increment the full pipeline was run on sample
+   papers in the web demo. Review feedback was then applied in the next increment.
+
+### 9.3 Work done
+
+- **Implementation.** All nine pipeline stages are implemented and connected. They run
+  in a web demo where students can upload PDF, Word or PowerPoint question papers.
+- **In-depth study of DSA-II Unit 1 and Unit 2 topics.**
+  - Unit 1: Binary Search Tree, AVL Tree with all four rotations, the three
+    traversals, Heap, and Heap Sort.
+  - Unit 2: graph representation, BFS, DFS, connected components, Kruskal's and
+    Prim's minimum spanning trees, and Dijkstra's shortest path, including the
+    reasons Bellman-Ford and Floyd-Warshall were not used.
+- **Unit 3 concepts.** 0/1 Knapsack and Longest Common Subsequence are studied and
+  implemented with dynamic programming. Matrix Chain Multiplication and Resource
+  Allocation were studied and compared with them (Section 5.7).
+
+### 9.4 Result and outcome
+
+- A working analyser that turns a set of question papers into:
+  - a topic-frequency table,
+  - a Top-N ranking,
+  - topic groups,
+  - a revision order,
+  - a study plan that fits the hours available.
+- On the worked example the output matches Section 7, and the AVL tree stays near
+  ⌈log₂ n⌉ in height while a plain BST on the same input grows much taller.
+- 18 automated tests pass.
+
+### 9.5 Remaining work (40%)
+
+- Revise the project objective as advised in the review.
+- Rewrite this report in the required format.
+- Read and cite more research papers.
+- Test with real previous-year papers instead of sample data.
+- Cover Unit 4 and Unit 5 topics once they are taught.
+
+---
+
+## 10. References
 
 1. Luhn, H. P. (1958). The automatic creation of literature abstracts.
    *IBM Journal of Research and Development*, 2(2), 159–165.

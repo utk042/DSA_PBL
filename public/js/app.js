@@ -472,6 +472,17 @@ function drawPath() {
 
 // ---------- How it works ----------
 
+const PROGRESS = {
+  feedback: [
+    ['Focus on DSA-II Unit 1 and Unit 2 and study their topics in depth', 'Done'],
+    ['Study Heap Sort, AVL Tree and BST in depth', 'Done'],
+    ['Start the implementation', 'Done'],
+    ['Read more research papers', 'In progress'],
+    ['Change the objective of the project', 'Pending'],
+    ['Write the report in the proper format', 'Pending'],
+  ],
+};
+
 const STEPS = [
   ['Read the papers', 'Split into questions, find topics', null, 'parse'],
   ['Merge spellings', 'Longest common subsequence', 'O(mn)', 'normalise'],
@@ -558,6 +569,29 @@ function how(el) {
         }</tbody></table></div>`}
       </section>
     </div>
+    <section class="card" style="margin-top:12px">
+      <div class="card-head"><h2>Project progress</h2><p>Status after the latest review.</p></div>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60" aria-label="Project progress">
+        <span style="width:60%"></span>
+      </div>
+      <p class="progress-label"><b>60%</b> complete</p>
+      <div class="grid-2">
+        <div>
+          <h3>Review feedback</h3>
+          <ul class="status-list">${PROGRESS.feedback.map(([text, st]) => `<li><span>${text}</span><span class="st ${st.toLowerCase().replace(/ /g, '-')}">${st}</span></li>`).join('')}</ul>
+        </div>
+        <div>
+          <h3>Methodology: incremental model</h3>
+          <p class="small">The pipeline was split into stages. Each stage adds one data structure and is built and tested before the next one starts: the tree layer in month 1, then the graph and DP layer in month 2. Review feedback goes into the next increment.</p>
+          <h3>Work done</h3>
+          <ul class="small done-list">
+            <li>Implementation of all nine stages, with upload of PDF, Word and PowerPoint papers</li>
+            <li>In-depth study of Unit 1 (BST, AVL, heap, heap sort) and Unit 2 (BFS, DFS, MST, Dijkstra)</li>
+            <li>Unit 3 concepts: 0/1 knapsack and LCS with dynamic programming</li>
+          </ul>
+        </div>
+      </div>
+    </section>
     <p class="small muted" style="margin-top:16px">Design notes and the reasons behind each choice are in the <a href="https://github.com/utk042/DSA_PBL/blob/HEAD/REPORT.md">project report</a>.</p>`;
 
   const th = el.querySelector('#threshold');
